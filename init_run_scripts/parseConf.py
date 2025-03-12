@@ -51,6 +51,7 @@ def parseConfContents(file):
 
     TStr = ""
     PStr=""
+    model_fileStr=""
     NxStr=""
     NyStr=""
     NzStr=""
@@ -77,6 +78,25 @@ def parseConfContents(file):
                 else:
                     print(fmtErrStr + oneLine)
                     exit(fmtCode)
+            # match P
+            if key=="P":
+                match_PValPattern=re.match(r"P\s*=\s*([-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?)$", oneLine)
+                if match_PValPattern:
+                    PStr=match_PValPattern.group(1)
+                else:
+                    print(fmtErrStr + oneLine)
+                    exit(fmtCode)
+            #match model_file
+            if key=="model_file":
+                match_model_file_Pattern=re.match(r"model_file\s*=\s*(.+)",oneLine)
+                if match_model_file_Pattern:
+                    model_fileStr=match_model_file_Pattern.group(1)
+
+                else:
+                    print(fmtErrStr + oneLine)
+                    exit(fmtCode)
+
+
             # match Nx
             if key=="Nx":
                 match_Nx_pattern=re.match(r"Nx\s*=\s*([-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?)$", oneLine)
@@ -183,6 +203,13 @@ def parseConfContents(file):
     if TStr == "":
         print("T not found in " + str(file))
         exit(valueMissingCode)
+    if PStr=="":
+        print("P not found in " + str(file))
+        exit(valueMissingCode)
+    if model_fileStr=="":
+        print("model_file not found in " + str(file))
+        exit(valueMissingCode)
+
 
     if NxStr=="":
         print("Nx not found in " + str(file))
@@ -227,6 +254,8 @@ def parseConfContents(file):
 
     dictTmp = {
         "T": TStr,
+        "P":PStr,
+        "model_file":model_fileStr,
         "Nx":NxStr,
         "Ny":NyStr,
         "Nz":NzStr,

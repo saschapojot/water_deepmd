@@ -48,6 +48,7 @@ dataOutDir=dataRoot
 box_x=12.5
 box_y=12.5
 box_z=12.5
+h=box_x/(Nx+1)/5
 def contents_to_conf(j,k):
     """
 
@@ -90,7 +91,7 @@ def contents_to_conf(j,k):
         "observable_name=U_dist\n",
         "\n",
         "#coordinate step length, A\n"
-        "h=0.1\n",
+        "h={h}\n",
         "#the configurations of the system are saved to file if the sweep number is a multiple of sweep_multiple\n",
         "\n",
         "sweep_multiple=700\n",

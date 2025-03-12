@@ -116,9 +116,9 @@ def create_init_atom_positions(U_dist_dataDir,Nx,Ny,Nz,box_x,box_y,box_z):
 
     cell_length_z=box_z/sec_num_z
 
-    for a in range(0,sec_num_x):
-        for b in range(0,sec_num_y):
-            for c in range(0,sec_num_x):
+    for a in range(1,sec_num_x):
+        for b in range(1,sec_num_y):
+            for c in range(1,sec_num_x):
 
                 O_x=a*cell_length_x
 
@@ -165,9 +165,14 @@ def create_init_atom_positions(U_dist_dataDir,Nx,Ny,Nz,box_x,box_y,box_z):
     with open(out_coord_file,"wb") as fptr:
         pickle.dump(coord_init,fptr)
 
-    out_type_file=U_dist_dataDir+"/init.raw.pkl"
+    out_type_file=U_dist_dataDir+"/raw.pkl"
     with open(out_type_file,"wb") as fptr:
         pickle.dump(type_init,fptr)
+    out_box_file=U_dist_dataDir+"/box.pkl"
+    box=np.array([box_x,0,0,0,box_y,0,0,0,box_z])
+
+    with open(out_box_file,"wb") as fptr:
+        pickle.dump(box,fptr)
 
 
 

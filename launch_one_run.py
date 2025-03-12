@@ -57,11 +57,13 @@ if match_summaryJson:
 ###############################################
 #load previous data, to get paths
 #get loadedJsonData
-
+# print("before entering load")
 loadResult=subprocess.run(["python3","./init_run_scripts/load_previous_data.py", json.dumps(jsonDataFromConf), json.dumps(jsonFromSummary)],capture_output=True, text=True)
-# print(loadResult.stdout)
+
 if loadResult.returncode!=0:
     print("Error in loading with code "+str(loadResult.returncode))
+    # print(loadResult.stdout)
+    # print(loadResult.stderr)
     exit(loadErrCode)
 
 match_loadJson=re.match(r"loadedJsonData=(.+)$",loadResult.stdout)
@@ -78,7 +80,8 @@ else:
 #construct parameters that are passed to mc
 
 TStr=jsonDataFromConf["T"]
-
+PStr=jsonDataFromConf["P"]
+model_fileStr=jsonDataFromConf["model_file"]
 sweep_to_write=jsonDataFromConf["sweep_to_write"]
 flushLastFile=loadedJsonData["flushLastFile"]
 
@@ -104,6 +107,8 @@ box_zStr=jsonDataFromConf["box_z"]
 
 params2cppInFile=[
     TStr+"\n",
+    PStr+"\n",
+    model_fileStr+"\n",
     sweep_to_write+"\n",
     flushLastFile+"\n",
     newFlushNum+"\n",

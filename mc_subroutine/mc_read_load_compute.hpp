@@ -261,10 +261,19 @@ class mc_computation
             this->coord_data_all_ptr=std::shared_ptr<double[]>(new double[sweep_to_write*Nx*Ny*Nz*3*3],
                                                              std::default_delete<double[]>());
 
-            this->coord_1_frame.reserve(Nx*Ny*Nz*3*3);
-            this->force_1_frame.reserve(Nx*Ny*Nz*3*3);
+            this->coord_init=std::shared_ptr<double[]>(new double[Nx*Ny*Nz*3*3],
+                                                             std::default_delete<double[]>());
+            this->coord_1_frame_curr.resize(Nx*Ny*Nz*3*3);
+            this->coord_1_frame_next.resize(Nx*Ny*Nz*3*3);
 
-            this->virial_1_frame.reserve(Nx*Ny*Nz*3*3);
+            this->force_1_frame_curr.resize(Nx*Ny*Nz*3*3);
+            this->force_1_frame_next.resize(Nx*Ny*Nz*3*3);
+
+            this->virial_1_frame_curr.resize(Nx*Ny*Nz*3*3);
+            this->virial_1_frame_next.resize(Nx*Ny*Nz*3*3);
+
+            this->cell.resize(9);
+            this->atom_type.resize(Nx*Ny*Nz*3);
 
         }
         catch (const std::bad_alloc& e)
@@ -295,14 +304,27 @@ class mc_computation
                                                              std::default_delete<double[]>());
         this->load_pickle_data(box_file,box_data_ptr,9);
 
+        for (int i=0;i<9;i++)
+        {
+            this->cell.push_back(box_data_ptr[i]);
+        }//end for
+        // print_vec(cell,9);
 
+        // print_shared_ptr(box_data_ptr,9);
         this->type_file=U_dist_dataDir+"/raw.pkl";
 
         std::shared_ptr<double[]> type_data_ptr=std::shared_ptr<double[]>(new double[Nx*Ny*Nz*3],
                                                              std::default_delete<double[]>());
 
-        // this->load_pickle_data(type_file,type_data_ptr,Nx*Ny*Nz*3);
+        this->load_pickle_data(type_file,type_data_ptr,Nx*Ny*Nz*3);
         // print_shared_ptr(type_data_ptr,10);
+        for (int i=0;i<Nx*Ny*Nz*3;i++)
+        {
+            this->atom_type.push_back(static_cast<int>(type_data_ptr[i]));
+        }//end for
+        // print_vec(atom_type,Nx*Ny*Nz*3);
+
+        this->unif_in_0_NxNyNz_3_3=std::uniform_int_distribution<int>(0,Nx*Ny*Nz*3*3);
     }//end constructor
 
 public:
@@ -311,10 +333,43 @@ public:
 
     void save_array_to_pickle(const std::shared_ptr<double[]>& ptr, int size, const std::string& filename);
 
+    void init_coord();
+
+    void execute_mc(const std::shared_ptr<double[]>& coord_1_frame_ptr,const int& flushNum);
 
 
+    void execute_mc_one_sweep(std::vector<double>& coord_1_frame_curr_vec, double& UCurr,
+    std::vector<double>& coord_1_frame_next_vec);
 
 
+    void coord_update( const std::vector<double>& coord_1_frame_curr,
+        const std::vector<double>& coord_1_frame_next,
+        double& UCurr, double& UNext);
+    ///
+    /// @param x
+    /// @param leftEnd
+    /// @param rightEnd
+    /// @param eps
+    /// @return return a value within distance eps from x, on the open interval (leftEnd, rightEnd)
+    double generate_uni_open_interval(const double& x, const double& leftEnd, const double& rightEnd,
+                                      const double& eps);
+
+    ///
+    /// @param x proposed value
+    /// @param y current value
+    /// @param a left end of interval
+    /// @param b right end of interval
+    /// @param epsilon half length
+    /// @return proposal probability S(x|y)
+    double S_uni(const double& x, const double& y, const double& a, const double& b, const double& epsilon);
+
+
+    double acceptanceRatio_uni(const std::vector<double>&coord_1_frame_curr,
+        const std::vector<double>& coord_1_frame_next,
+        const int& ind, const double& UCurr, const double& UNext);
+
+    void proposal_uni(const std::vector<double>&coord_1_frame_curr,
+       std::vector<double>& coord_1_frame_next,const int& ind );
 
     template <class T>
     void print_shared_ptr(const std::shared_ptr<T>& ptr, const int& size)
@@ -337,6 +392,28 @@ public:
             }
         }
     } //end print_shared_ptr
+
+    template <class T>
+    void print_vec(const std::vector<T>& vec, const int& size)
+    {
+        if (vec.empty())
+        {
+            std::cout << "Vector is empty." << std::endl;
+            return;
+        }
+        for (int i = 0; i < size; i++)
+        {
+            if (i < size - 1)
+            {
+                std::cout << vec[i] << ",";
+            }
+            else
+            {
+                std::cout << vec[i] << std::endl;
+            }
+        }//end for
+    }//end print_vec
+
 public:
     double T; // temperature
     double beta;
@@ -349,6 +426,7 @@ public:
     std::string TDirRoot;
     std::string U_dist_dataDir;
     std::ranlux24_base e2;
+    std::uniform_int_distribution<int> unif_in_0_NxNyNz_3_3;
     std::uniform_real_distribution<> distUnif01;
     int sweep_multiple;
     std::string out_U_path;
@@ -363,11 +441,15 @@ public:
     //data in 1 flush
     std::shared_ptr<double[]> U_data_all_ptr; //all U data
     std::shared_ptr<double[]> coord_data_all_ptr;// all coord data, O,H,H,O,H,H,...,O,H,H
-
-    std::vector<double>coord_1_frame;
+    //initial value
+    std::shared_ptr<double[]> coord_init;
+    std::vector<double>coord_1_frame_curr;
+    std::vector<double>coord_1_frame_next;
     std::vector<int>atom_type;
     std::vector<double> cell;
-    std::vector<double>force_1_frame,virial_1_frame;
+    std::vector<double>force_1_frame_curr,virial_1_frame_curr;
+    std::vector<double>force_1_frame_next,virial_1_frame_next;
+
 
     std::string box_file;
     std::string type_file;

@@ -91,7 +91,7 @@ def contents_to_conf(j,k):
         "observable_name=U_dist\n",
         "\n",
         "#coordinate step length, A\n"
-        "h={h}\n",
+        f"h={h}\n",
         "#the configurations of the system are saved to file if the sweep number is a multiple of sweep_multiple\n",
         "\n",
         "sweep_multiple=700\n",

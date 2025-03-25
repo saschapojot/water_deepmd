@@ -4,7 +4,7 @@ from math import factorial
 #This script creates directories and conf files for mc
 
 
-def format_using_decimal(value, precision=6):
+def format_using_decimal(value, precision=15):
     # Set the precision higher to ensure correct conversion
     getcontext().prec = precision + 2
     # Convert the float to a Decimal with exact precision
@@ -42,13 +42,16 @@ for k in range(0,len(PVals)):
     PStrAll.append(PStr)
 
 model_file="./se_e2_a/compressed_model_water.pth"
-
+effective_data_num_required=5000
+sweep_to_write=500
+sweep_multiple=700
+observable_name="U_dist"
 dataRoot="./mcDataAll/"
 dataOutDir=dataRoot
-box_x=12.5
-box_y=12.5
-box_z=12.5
-h=box_x/(Nx+1)/5
+box_x_init=12.5
+box_y_init=12.5
+box_z_init=12.5
+h=box_x_init/(Nx+1)/5
 def contents_to_conf(j,k):
     """
 
@@ -75,28 +78,28 @@ def contents_to_conf(j,k):
         f"Nz={Nz}\n",
         "\n",
         "#box size, A\n"
-        f"box_x={box_x}\n",
+        f"box_x_init={box_x_init}\n",
         "\n",
-        f"box_y={box_y}\n",
+        f"box_y_init={box_y_init}\n",
         "\n",
-        f"box_z={box_z}\n",
+        f"box_z_init={box_z_init}\n",
         "\n",
         "#this is the data number in each pkl file, i.e., in each flush\n"
-        "sweep_to_write=500\n",
+        f"sweep_to_write={sweep_to_write}\n",
         "\n",
         "#within each flush,  sweep_to_write*sweep_multiple mc computations are executed\n",
         "\n",
         f"default_flush_num={default_flush_num}\n",
         "\n",
-        "observable_name=U_dist\n",
+        f"observable_name={observable_name}\n",
         "\n",
         "#coordinate step length, A\n"
         f"h={h}\n",
         "#the configurations of the system are saved to file if the sweep number is a multiple of sweep_multiple\n",
         "\n",
-        "sweep_multiple=700\n",
+        f"sweep_multiple={sweep_multiple}\n",
         "\n",
-        "effective_data_num_required=1000\n",
+        f"effective_data_num_required={effective_data_num_required}\n",
         ]
     outDir=dataOutDir+f"/Nx{Nx}_Ny{Ny}_Nz{Nz}/T{TStrAll[j]}/P{PStrAll[k]}/"
     Path(outDir).mkdir(exist_ok=True,parents=True)

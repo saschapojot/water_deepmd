@@ -4,7 +4,7 @@
 
 #ifndef MC_READ_LOAD_COMPUTE_HPP
 #define MC_READ_LOAD_COMPUTE_HPP
-
+#include <algorithm>
 #include <boost/filesystem.hpp>
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
@@ -208,72 +208,60 @@ class mc_computation
 
             }
 
-            // read box_x
-            if (paramCounter == 13)
-            {
-                iss>>box_x;
-                if (box_x<=0)
-                {
-                    std::cerr << "box_x must be >0" << std::endl;
-                    std::exit(1);
-                }
-                std::cout<<"box_x="<<box_x<<std::endl;
-                paramCounter++;
-                continue;
-            }//end box_x
 
-            //read box_y
-            if (paramCounter == 14)
-            {
-                iss>>box_y;
-                if (box_y<=0)
-                {
-                    std::cerr << "box_y must be >0" << std::endl;
-                    std::exit(1);
-                }
-                std::cout<<"box_y="<<box_y<<std::endl;
-                paramCounter++;
-                continue;
 
-            }//end box_y
 
-            //read box_z
-            if (paramCounter == 15)
-            {
-                iss>>box_z;
-                if (box_z<=0)
-                {
-                    std::cerr << "box_z must be >0" << std::endl;
-                    std::exit(1);
-                }
-                std::cout<<"box_z="<<box_z<<std::endl;
-                paramCounter++;
-                continue;
-            }//end box_z
+
         }//end getline while
 
+
+        this->total_atom_num=Nx*Ny*Nz*3;
+        this->total_atom_xyz_components_num=Nx*Ny*Nz*3*3;
+        this->box_component_num=9;
+        this->box_x_component_position=0;
+        this->box_y_component_position=3;
+        this->box_z_component_position=6;
         //allocate memory for data
 
         try
         {
             this->U_data_all_ptr = std::shared_ptr<double[]>(new double[sweep_to_write],
                                                              std::default_delete<double[]>());
-            this->coord_data_all_ptr=std::shared_ptr<double[]>(new double[sweep_to_write*Nx*Ny*Nz*3*3],
+            this->coord_data_all_ptr=std::shared_ptr<double[]>(new double[sweep_to_write*total_atom_xyz_components_num],
                                                              std::default_delete<double[]>());
 
-            this->coord_init=std::shared_ptr<double[]>(new double[Nx*Ny*Nz*3*3],
+            this->box_data_all_ptr=std::shared_ptr<double[]>(new double[sweep_to_write*box_component_num],
                                                              std::default_delete<double[]>());
-            this->coord_1_frame_curr.resize(Nx*Ny*Nz*3*3);
-            this->coord_1_frame_next.resize(Nx*Ny*Nz*3*3);
+            this->coord_init=std::shared_ptr<double[]>(new double[total_atom_xyz_components_num],
+                                                             std::default_delete<double[]>());
+            this->coord_init_vector.resize(total_atom_xyz_components_num);
 
-            this->force_1_frame_curr.resize(Nx*Ny*Nz*3*3);
-            this->force_1_frame_next.resize(Nx*Ny*Nz*3*3);
+            this->box_init=std::shared_ptr<double[]>(new double[box_component_num],
+                                                             std::default_delete<double[]>());
 
-            this->virial_1_frame_curr.resize(Nx*Ny*Nz*3*3);
-            this->virial_1_frame_next.resize(Nx*Ny*Nz*3*3);
+            this->box_init_vector.resize(box_component_num);
 
-            this->cell.resize(9);
-            this->atom_type.resize(Nx*Ny*Nz*3);
+            this->coord_x_components.resize(total_atom_num);
+
+            this->coord_y_components.resize(total_atom_num);
+
+            this->coord_z_components.resize(total_atom_num);
+
+
+            // this->coord_1_frame_curr.resize(Nx*Ny*Nz*3*3);
+            // this->coord_1_frame_next.resize(Nx*Ny*Nz*3*3);
+
+            // this->box_1_frame_curr.resize(9);
+            // this->box_1_frame_next.resize(9);
+
+            // this->force_1_frame_curr.resize(Nx*Ny*Nz*3*3);
+            // this->force_1_frame_next.resize(Nx*Ny*Nz*3*3);
+
+            // this->virial_1_frame_curr.resize(Nx*Ny*Nz*3*3);
+            // this->virial_1_frame_next.resize(Nx*Ny*Nz*3*3);
+
+
+            this->atom_type.resize(total_atom_num);
 
         }
         catch (const std::bad_alloc& e)
@@ -285,74 +273,60 @@ class mc_computation
             std::cerr << "Exception: " << e.what() << std::endl;
             std::exit(2);
         }
-        this->out_U_path = this->U_dist_dataDir + "/U/";
-        if (!fs::is_directory(out_U_path) || !fs::exists(out_U_path))
-        {
-            fs::create_directories(out_U_path);
-        }
 
-        this->out_coord_path=this->U_dist_dataDir + "/coord/";
-        if (!fs::is_directory(out_coord_path) || !fs::exists(out_coord_path))
-        {
-            fs::create_directories(out_coord_path);
-        }
 
-        //read box
-        this->box_file=U_dist_dataDir+"/box.pkl";
 
-        std::shared_ptr<double[]> box_data_ptr=std::shared_ptr<double[]>(new double[9],
-                                                             std::default_delete<double[]>());
-        this->load_pickle_data(box_file,box_data_ptr,9);
-
-        for (int i=0;i<9;i++)
-        {
-            this->cell.push_back(box_data_ptr[i]);
-        }//end for
         // print_vec(cell,9);
 
         // print_shared_ptr(box_data_ptr,9);
         this->type_file=U_dist_dataDir+"/raw.pkl";
 
-        std::shared_ptr<double[]> type_data_ptr=std::shared_ptr<double[]>(new double[Nx*Ny*Nz*3],
+        std::shared_ptr<double[]> type_data_ptr=std::shared_ptr<double[]>(new double[total_atom_num],
                                                              std::default_delete<double[]>());
 
-        this->load_pickle_data(type_file,type_data_ptr,Nx*Ny*Nz*3);
+        this->load_pickle_data(type_file,type_data_ptr,total_atom_num);
         // print_shared_ptr(type_data_ptr,10);
-        for (int i=0;i<Nx*Ny*Nz*3;i++)
+        // std::cout<<type_data_ptr[1]<<std::endl;
+        for (int i=0;i<total_atom_num;i++)
         {
-            this->atom_type.push_back(static_cast<int>(type_data_ptr[i]));
+            this->atom_type[i]=static_cast<int>( type_data_ptr[i]);
         }//end for
         // print_vec(atom_type,Nx*Ny*Nz*3);
 
-        this->unif_in_0_NxNyNz_3_3=std::uniform_int_distribution<int>(0,Nx*Ny*Nz*3*3);
+        this->unif_in_0_NxNyNz_3_3=std::uniform_int_distribution<int>(0,total_atom_xyz_components_num);
+        this->box_upper_bound=15.0;
+
+        std::cout<<"box_upper_bound="<<box_upper_bound<<std::endl;
+
+
+        this->out_U_path=U_dist_dataDir+"/U/";
+        this->out_coord_path=U_dist_dataDir+"/coord/";
+        this->out_box_path=U_dist_dataDir+"/box/";
     }//end constructor
 
 public:
     void init_and_run();
-    void load_pickle_data(const std::string& filename, std::shared_ptr<double[]>& data_ptr, std::size_t size);
 
-    void save_array_to_pickle(const std::shared_ptr<double[]>& ptr, int size, const std::string& filename);
+    void init_coord_and_box();
 
-    void init_coord();
-
-    void execute_mc(const std::shared_ptr<double[]>& coord_1_frame_ptr,const int& flushNum);
-
-
-    void execute_mc_one_sweep(std::vector<double>& coord_1_frame_curr_vec, double& UCurr,
-    std::vector<double>& coord_1_frame_next_vec);
-
-
-    void coord_update( const std::vector<double>& coord_1_frame_curr,
-        const std::vector<double>& coord_1_frame_next,
-        double& UCurr, double& UNext);
     ///
-    /// @param x
-    /// @param leftEnd
-    /// @param rightEnd
-    /// @param eps
-    /// @return return a value within distance eps from x, on the open interval (leftEnd, rightEnd)
-    double generate_uni_open_interval(const double& x, const double& leftEnd, const double& rightEnd,
-                                      const double& eps);
+    /// @param box_1_frame_curr
+    /// @param box_1_frame_next
+    /// @param ind
+    /// @param UCurr
+    /// @param UNext
+    /// @return acceptance ratio for updating box
+    double acceptanceRatio_uni_for_box(const std::vector<double>&box_1_frame_curr,
+                                         const std::vector<double>&box_1_frame_next,const int& ind,
+                                         const double& UCurr, const double& UNext);
+
+
+    void proposal_uni_box(const std::vector<double>&box_1_frame_curr,
+        std::vector<double>&box_1_frame_next,const int& ind,const std::vector<double>&coord_1_frame_curr,
+        double &box_x_max_val,double & box_y_max_val,double & box_z_max_val);
+
+    void proposal_uni_coord(const std::vector<double>& coord_1_frame_curr,
+        std::vector<double>&coord_1_frame_next,const int& ind,const std::vector<double>&box_1_frame_curr);
 
     ///
     /// @param x proposed value
@@ -362,14 +336,17 @@ public:
     /// @param epsilon half length
     /// @return proposal probability S(x|y)
     double S_uni(const double& x, const double& y, const double& a, const double& b, const double& epsilon);
+    ///
+    /// @param x
+    /// @param leftEnd
+    /// @param rightEnd
+    /// @param eps
+    /// @return return a value within distance eps from x, on the open interval (leftEnd, rightEnd)
+    double generate_uni_open_interval(const double& x, const double& leftEnd, const double& rightEnd,
+                                      const double& eps);
 
-
-    double acceptanceRatio_uni(const std::vector<double>&coord_1_frame_curr,
-        const std::vector<double>& coord_1_frame_next,
-        const int& ind, const double& UCurr, const double& UNext);
-
-    void proposal_uni(const std::vector<double>&coord_1_frame_curr,
-       std::vector<double>& coord_1_frame_next,const int& ind );
+    void load_pickle_data(const std::string& filename, std::shared_ptr<double[]>& data_ptr, std::size_t size);
+    void save_array_to_pickle(const std::shared_ptr<double[]>& ptr, int size, const std::string& filename);
 
     template <class T>
     void print_shared_ptr(const std::shared_ptr<T>& ptr, const int& size)
@@ -431,27 +408,48 @@ public:
     int sweep_multiple;
     std::string out_U_path;
     std::string out_coord_path;
+    std::string out_box_path;
     std::string model_file;
 
     double kB=8.617333262e-5;
 
     deepmd::DeepPot dp_model;
     int Nx,Ny,Nz;
-    double box_x,box_y,box_z;
+
+    double box_upper_bound;
+
     //data in 1 flush
     std::shared_ptr<double[]> U_data_all_ptr; //all U data
     std::shared_ptr<double[]> coord_data_all_ptr;// all coord data, O,H,H,O,H,H,...,O,H,H
+    std::shared_ptr<double[]> box_data_all_ptr;//all box data
     //initial value
     std::shared_ptr<double[]> coord_init;
-    std::vector<double>coord_1_frame_curr;
-    std::vector<double>coord_1_frame_next;
+    std::shared_ptr<double[]>box_init;
+
+    std::vector<double>coord_init_vector;
+    std::vector<double>box_init_vector;
+
+    // std::vector<double>coord_1_frame_curr;
+    // std::vector<double>coord_1_frame_next;
+    // std::vector<double> box_1_frame_curr;
+    // std::vector<double> box_1_frame_next;
+
     std::vector<int>atom_type;
-    std::vector<double> cell;
-    std::vector<double>force_1_frame_curr,virial_1_frame_curr;
-    std::vector<double>force_1_frame_next,virial_1_frame_next;
+
+    // std::vector<double>force_1_frame_curr,virial_1_frame_curr;
+    // std::vector<double>force_1_frame_next,virial_1_frame_next;
 
 
-    std::string box_file;
+    std::vector<double> coord_x_components,coord_y_components,coord_z_components;
+
     std::string type_file;
+
+    //for 1 frame:
+    int total_atom_num;
+    int total_atom_xyz_components_num;
+
+    int box_component_num;
+
+    int box_x_component_position,box_y_component_position,box_z_component_position;
 
 };

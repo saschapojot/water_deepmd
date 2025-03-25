@@ -5,7 +5,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CXX_STANDARD_LIB "/usr/lib/x86_64-linux-gnu/libstdc++.so.6")
 add_executable(run_mc run_mc.cpp mc_subroutine/mc_read_load_compute.cpp mc_subroutine/mc_read_load_compute.hpp)
-
+target_compile_options(run_mc PRIVATE
+        $<$<CONFIG:Release>:-O3>
+        $<$<CONFIG:Release>:-march=native>
+        $<$<CONFIG:Release>:-ftree-vectorize>
+)
 set_source_files_properties(
         mc_subroutine/mc_read_load_compute.cpp
         PROPERTIES

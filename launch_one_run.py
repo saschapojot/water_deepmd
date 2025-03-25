@@ -98,11 +98,7 @@ NyStr=jsonDataFromConf["Ny"]
 
 NzStr=jsonDataFromConf["Nz"]
 
-box_xStr=jsonDataFromConf["box_x"]
 
-box_yStr=jsonDataFromConf["box_y"]
-
-box_zStr=jsonDataFromConf["box_z"]
 
 
 params2cppInFile=[
@@ -118,10 +114,7 @@ params2cppInFile=[
     sweep_multipleStr+"\n",
     NxStr+"\n",
     NyStr+"\n",
-    NzStr+"\n",
-    box_xStr+"\n",
-    box_yStr+"\n",
-    box_zStr+"\n"
+    NzStr+"\n"
     ]
 
 cppInParamsFileName=TDirRoot+"/cppIn.txt"

@@ -1,8 +1,5 @@
-//
-// Created by adada on 12/3/2025.
-//
-#include "./mc_read_load_compute.hpp"
 
+# include "mc_read_load_compute.hpp"
 
 void mc_computation::load_pickle_data(const std::string& filename, std::shared_ptr<double[]>& data_ptr,
                                       std::size_t size)
@@ -59,6 +56,8 @@ void mc_computation::load_pickle_data(const std::string& filename, std::shared_p
         throw std::runtime_error("Python error occurred.");
     }
 }
+
+
 
 void mc_computation::save_array_to_pickle(const std::shared_ptr<double[]>& ptr, int size, const std::string& filename)
 {
@@ -121,37 +120,54 @@ void mc_computation::save_array_to_pickle(const std::shared_ptr<double[]>& ptr, 
 
 
 
-void mc_computation::init_coord()
+void mc_computation::init_coord_and_box()
 {
-
     std::string name;
-    std::string coord_inFileName;
+    std::string coord_inFileName, box_inFileName;
     if (this->flushLastFile == -1)
     {
+
         name = "init";
         coord_inFileName=out_coord_path+"/"+name+".coord.pkl";
-        this->load_pickle_data(coord_inFileName,coord_init,Nx*Ny*Nz*3*3);
+
+        box_inFileName=out_box_path+"/"+name+".box.pkl";
+
+        //load coord
+        this->load_pickle_data(coord_inFileName,coord_init,total_atom_xyz_components_num);
+
+        //load box
+        this->load_pickle_data(box_inFileName,box_init,box_component_num);
+
     }//end flushLastFile==-1
     else
     {
+
         name="flushEnd"+std::to_string(this->flushLastFile);
+
         coord_inFileName=out_coord_path+"/"+name+".coord.pkl";
-        this->load_pickle_data(coord_inFileName,coord_data_all_ptr,sweep_to_write*Nx*Ny*Nz*3*3);
+        box_inFileName=out_box_path+"/"+name+".box.pkl";
 
-        //copy last Nx*Ny*Nz*3*3 elements of coord_data_all_ptr
-        std::memcpy(coord_init.get(),coord_data_all_ptr.get()+(sweep_to_write-1)*Nx*Ny*Nz*3*3,Nx*Ny*Nz*3*3*sizeof(double));
+        //load coord
+        this->load_pickle_data(coord_inFileName,coord_data_all_ptr,
+            sweep_to_write*total_atom_xyz_components_num);
 
+        std::memcpy(coord_init.get(),
+            coord_data_all_ptr.get()+(sweep_to_write-1)*total_atom_xyz_components_num,
+            total_atom_xyz_components_num*sizeof(double));
+
+        //load box
+        this->load_pickle_data(box_inFileName,box_data_all_ptr,sweep_to_write*box_component_num);
+
+        std::memcpy(box_init.get(),
+            box_data_all_ptr.get()+(sweep_to_write-1)*box_component_num,box_component_num*sizeof(double));
     }//end else
-    // print_shared_ptr(coord_init,Nx*Ny*Nz*3*3);
 
-}
+    //smart pointer to std::vector, coord
+    std::memcpy(coord_init_vector.data(),coord_init.get(),total_atom_xyz_components_num*sizeof(double));
 
+    //smart pointer to std::vector, box
+    std::memcpy(box_init_vector.data(),box_init.get(),box_component_num*sizeof(double));
 
-void mc_computation::init_and_run()
-{
-
-    this->init_coord();
-    this->execute_mc(coord_init,newFlushNum);
 }
 
 
@@ -197,7 +213,7 @@ double mc_computation::S_uni(const double& x, const double& y, const double& a, 
     {
         return 1.0 / (y - a + epsilon);
     }
-    else if (a + epsilon <= y and y < b + epsilon)
+    else if (a + epsilon <= y and y < b - epsilon)
     {
         return 1.0 / (2.0 * epsilon);
     }
@@ -213,183 +229,123 @@ double mc_computation::S_uni(const double& x, const double& y, const double& a, 
 }
 
 
-
-void mc_computation::coord_update( const std::vector<double>& coord_1_frame_curr,
-        const std::vector<double>& coord_1_frame_next,
-        double& UCurr, double& UNext)
+void mc_computation::init_and_run()
 {
-//compute UCurr
-    this->dp_model.compute(UCurr,force_1_frame_curr,virial_1_frame_curr,coord_1_frame_curr,atom_type,cell);
-
-    //compute UNext
-    this->dp_model.compute(UNext,force_1_frame_next,virial_1_frame_next,coord_1_frame_next,atom_type,cell);
-
-
+    this->init_coord_and_box();
+    // print_shared_ptr(this->coord_init,Nx*Ny*Nz*3*3);
+// print_vec(this->coord_init_vector,Nx*Ny*Nz*3*3);
+     // print_vec(this->box_init_vector,9);
 }
 
 
-
-double mc_computation::acceptanceRatio_uni(const std::vector<double>&coord_1_frame_curr,
-        const std::vector<double>& coord_1_frame_next,
-        const int& ind, const double& UCurr, const double& UNext)
+void mc_computation::proposal_uni_coord(const std::vector<double>& coord_1_frame_curr,
+        std::vector<double>&coord_1_frame_next,const int& ind,const std::vector<double>&box_1_frame_curr)
 {
+    std::memcpy(coord_1_frame_next.data(),coord_1_frame_curr.data(),total_atom_xyz_components_num*sizeof(double));
 
-    double numerator = -this->beta * UNext;
-    double denominator = -this->beta * UCurr;
-    double R = std::exp(numerator - denominator);
-    double S_curr_next,S_next_curr;
+    double box_x=box_1_frame_curr[box_x_component_position];
+    double box_y=box_1_frame_curr[box_y_component_position];
+    double box_z=box_1_frame_curr[box_z_component_position];
 
-    //if it is x component
     if (ind%3==0)
     {
-         S_curr_next = S_uni(coord_1_frame_curr[ind],coord_1_frame_next[ind],
-            0.0,box_x,h);
-
-         S_next_curr = S_uni(coord_1_frame_next[ind],coord_1_frame_curr[ind],
-            0.0,box_x,h);
-    }//end mod ==0
-
+        double x_tmp= this->generate_uni_open_interval(coord_1_frame_curr[ind],0,box_x,h);
+        coord_1_frame_next[ind]=x_tmp;
+    }// end mod 3 ==0
     else if (ind%3==1)
     {
-         S_curr_next = S_uni(coord_1_frame_curr[ind],coord_1_frame_next[ind],
-            0.0,box_y,h);
-         S_next_curr = S_uni(coord_1_frame_next[ind],coord_1_frame_curr[ind],
-            0.0,box_y,h);
-    }//end mod ==1
-
+        double y_tmp=this->generate_uni_open_interval(coord_1_frame_curr[ind],0,box_y,h);
+        coord_1_frame_next[ind]=y_tmp;
+    } //end mod 3 ==1
     else
     {
-         S_curr_next = S_uni(coord_1_frame_curr[ind],coord_1_frame_next[ind],
-            0.0,box_z,h);
-         S_next_curr = S_uni(coord_1_frame_next[ind],coord_1_frame_curr[ind],
-            0.0,box_z,h);
-    }//end mod==2
-    double ratio = S_curr_next / S_next_curr;
-
-    if (std::fetestexcept(FE_DIVBYZERO))
-    {
-        std::cout << "Division by zero exception caught." << std::endl;
-        std::exit(15);
-    }
-    if (std::isnan(ratio))
-    {
-        std::cout << "The result is NaN." << std::endl;
-        std::exit(15);
-    }
-
-    R *= ratio;
-
-    return std::min(1.0, R);
+        double z_tmp=this->generate_uni_open_interval(coord_1_frame_curr[ind],0,box_z,h);
+        coord_1_frame_next[ind]=z_tmp;
+    }//end mod 3==2
 
 }
 
 
-void mc_computation::execute_mc_one_sweep(std::vector<double>& coord_1_frame_curr_vec, double& UCurr,
-    std::vector<double>& coord_1_frame_next_vec)
+void mc_computation::proposal_uni_box(const std::vector<double>&box_1_frame_curr,
+        std::vector<double>&box_1_frame_next,const int& ind,const std::vector<double>&coord_1_frame_curr,
+        double &box_x_max_val,double & box_y_max_val,double & box_z_max_val)
 {
-
-    double UNext = 0;
-
-    //update coord
-    for (int i=0;i<Nx*Ny*Nz*3*3;i++)
+    std::memcpy(box_1_frame_next.data(),box_1_frame_curr.data(),box_component_num*sizeof(double));
+    ///////////////////////////////////////////////////////
+    /// x direction of box
+    if (ind==box_x_component_position)
     {
-        int ind=unif_in_0_NxNyNz_3_3(e2);
-        // std::cout<<"ind="<<ind<<std::endl;
-        //proposal
-        this->proposal_uni(coord_1_frame_curr_vec,coord_1_frame_next_vec,ind);
-        //energy
-        this->coord_update(coord_1_frame_curr_vec,coord_1_frame_next_vec,UCurr,UNext);
-        //acceptance ratio
-        double r = this->acceptanceRatio_uni(coord_1_frame_curr_vec,coord_1_frame_next_vec,ind,
-            UCurr,UNext);
-        double u = distUnif01(e2);
-        // std::cout<<"u="<<u<<std::endl;
-        if (u<=r)
+        //update box length in x direction
+        //extract x components
+        for (int i=0;i<total_atom_xyz_components_num;i+=3)
         {
-            UCurr=UNext;
-            std::memcpy(coord_1_frame_curr_vec.data(),coord_1_frame_next_vec.data(),Nx*Ny*Nz*3*3*sizeof(double));
-        }//end of accept-reject
+            coord_x_components[i/3]=coord_1_frame_curr[i];
+        }//end for
+        auto x_max_iter=std::max_element(coord_x_components.begin(),coord_x_components.end());
+        box_x_max_val=*x_max_iter;
 
-    }//end updating coord
-
-
-}
-
-
-void mc_computation::proposal_uni(const std::vector<double>&coord_1_frame_curr,
-       std::vector<double>& coord_1_frame_next,const int& ind )
-{
-    // size_t length=coord_1_frame_curr.size();
-
-    double elem_val_new=0;
-    if (ind%3==0)
+        double x_direction_new_val=this->generate_uni_open_interval(box_1_frame_curr[box_x_component_position],box_x_max_val,box_upper_bound,h);
+        box_1_frame_next[box_x_component_position]=x_direction_new_val;
+        return;
+    }//end if ind==box_x_component_position
+    /// end x direction of box
+    ///////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////
+    /// y direction of box
+    if (ind==box_y_component_position)
     {
-        elem_val_new=this->generate_uni_open_interval(coord_1_frame_curr[ind],
-            0.0,box_x,h);
-    }//end mod ==0
-    else if (ind%3==1)
-    {
-        elem_val_new=this->generate_uni_open_interval(coord_1_frame_curr[ind],
-            0.0,box_y,h);
-    }//end mod ==1
-    else
-    {
-        elem_val_new=this->generate_uni_open_interval(coord_1_frame_curr[ind],
-            0.0,box_z,h);
-    }//end mod ==2
-
-    std::memcpy(coord_1_frame_next.data(),coord_1_frame_curr.data(),Nx*Ny*Nz*3*3*sizeof(double));
-    coord_1_frame_next[ind]=elem_val_new;
-}
-
-
-void mc_computation::execute_mc(const std::shared_ptr<double[]>& coord_1_frame,const int& flushNum)
-{
-std::memcpy(coord_1_frame_curr.data(),coord_1_frame.get(),Nx*Ny*Nz*3*3*sizeof(double));
-
-    // print_vec(coord_1_frame_curr,Nx*Ny*Nz*3*3);
-    // print_vec(coord_1_frame_next,Nx*Ny*Nz*3*3);
-
-    double UCurr=0;
-    int flushThisFileStart=this->flushLastFile+1;
-    for (int fls=0;fls<flushNum;fls++)
-    {
-        const auto tMCStart{std::chrono::steady_clock::now()};
-        for (int swp = 0; swp < sweep_to_write*sweep_multiple; swp++)
+        //update box length in y direction
+        //extract y components
+        for (int i=1;i<total_atom_xyz_components_num;i+=3)
         {
+            coord_y_components[(i-1)/3]=coord_1_frame_curr[i];
+        }//end for
+        auto max_y_iter=std::max_element(coord_y_components.begin(),coord_y_components.end());
+        box_y_max_val=*max_y_iter;
+        double y_direction_new_val=this->generate_uni_open_interval(box_1_frame_curr[box_y_component_position],box_y_max_val,box_upper_bound,h);
+        box_1_frame_next[box_y_component_position]=y_direction_new_val;
+        return;
+    }//end if ind==box_y_component_position
+    /// end y direction of box
+    ///////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////
+    /// z direction of box
+    if (ind==box_z_component_position)
+    {
+        //update box length in z direction
+        //extract z components
+        for (int i=2;i<total_atom_xyz_components_num;i+=3)
+        {
+            coord_z_components[(i-2)/3]=coord_1_frame_curr[i];
+        }//end for
+        auto max_z_iter=std::max_element(coord_z_components.begin(),coord_z_components.end());
+        box_z_max_val=*max_z_iter;
 
-            this->execute_mc_one_sweep(coord_1_frame_curr,UCurr,coord_1_frame_next);
+        double z_direction_new_val=this->generate_uni_open_interval(box_1_frame_curr[box_z_component_position],box_z_max_val,box_upper_bound,h);
+        box_1_frame_next[box_z_component_position]=z_direction_new_val;
+        return;
+    }//end if ind==box_z_component_position
+    /// end z direction of box
+    ///////////////////////////////////////////////////////
+    std::cerr<<"Invalid ind value for box: ind="<<ind<<std::endl;
+    std::exit(3);
+}
 
 
-            if (swp%sweep_multiple==0)
-            {
-                int swp_out=swp/sweep_multiple;
 
-                this->U_data_all_ptr[swp_out]=UCurr;
-                std::memcpy(coord_data_all_ptr.get()+swp_out*Nx*Ny*Nz*3*3,
-                    coord_1_frame_curr.data(),Nx*Ny*Nz*3*3*sizeof(double));
-            }//end save to array
+///
+/// @param box_1_frame_curr
+/// @param box_1_frame_next
+/// @param ind
+/// @param UCurr
+/// @param UNext
+/// @return acceptance ratio for updating box
+double mc_computation::acceptanceRatio_uni_for_box(const std::vector<double>&box_1_frame_curr,
+                                     const std::vector<double>&box_1_frame_next,const int& ind,const double& UCurr, const double& UNext)
+{
 
-        }//end sweep for
 
-        int flushEnd=flushThisFileStart+fls;
-        std::string fileNameMiddle =  "flushEnd" + std::to_string(flushEnd);
 
-        std::string out_U_PickleFileName = out_U_path+"/" + fileNameMiddle + ".U.pkl";
 
-        std::string out_coord_PickleFileName=out_coord_path+"/"+fileNameMiddle+".coord.pkl";
-
-        //save U
-        this->save_array_to_pickle(U_data_all_ptr,sweep_to_write,out_U_PickleFileName);
-
-        //save coord
-        this->save_array_to_pickle(coord_data_all_ptr,sweep_to_write*Nx*Ny*Nz*3*3,out_coord_PickleFileName);
-
-        const auto tMCEnd{std::chrono::steady_clock::now()};
-        const std::chrono::duration<double> elapsed_secondsAll{tMCEnd - tMCStart};
-        std::cout << "flush " + std::to_string(flushEnd)  + ": "
-                  << elapsed_secondsAll.count() / 3600.0 << " h" << std::endl;
-    }//end fls
-    std::cout << "mc executed for " << flushNum << " flushes." << std::endl;
 
 }

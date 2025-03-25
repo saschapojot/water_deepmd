@@ -29,9 +29,9 @@ Nx=int(jsonDataFromConf["Nx"])
 Ny=int(jsonDataFromConf["Ny"])
 Nz=int(jsonDataFromConf["Nz"])
 
-box_x=float(jsonDataFromConf["box_x"])
-box_y=float(jsonDataFromConf["box_y"])
-box_z=float(jsonDataFromConf["box_z"])
+box_x_init=float(jsonDataFromConf["box_x_init"])
+box_y_init=float(jsonDataFromConf["box_y_init"])
+box_z_init=float(jsonDataFromConf["box_z_init"])
 eps=1e-1
 half_bond_angle=52/180*np.pi
 
@@ -168,7 +168,10 @@ def create_init_atom_positions(U_dist_dataDir,Nx,Ny,Nz,box_x,box_y,box_z):
     out_type_file=U_dist_dataDir+"/raw.pkl"
     with open(out_type_file,"wb") as fptr:
         pickle.dump(type_init,fptr)
-    out_box_file=U_dist_dataDir+"/box.pkl"
+
+    out_box_dir=U_dist_dataDir+"/box/"
+    Path(out_box_dir).mkdir(exist_ok=True,parents=True)
+    out_box_file=out_box_dir+"/init.box.pkl"
     box=np.array([box_x,0,0,0,box_y,0,0,0,box_z])
 
     with open(out_box_file,"wb") as fptr:
@@ -191,7 +194,7 @@ def create_loadedJsonData(flushLastFileVal):
 
 #if no data found, return flush=-1
 if len(pklFileList)==0:
-    create_init_atom_positions(U_dist_dataDir,Nx,Ny,Nz,box_x, box_y, box_z)
+    create_init_atom_positions(U_dist_dataDir,Nx,Ny,Nz,box_x_init, box_y_init, box_z_init)
 
     out_U_path=U_dist_dataDir+"/U/"
     Path(out_U_path).mkdir(exist_ok=True,parents=True)

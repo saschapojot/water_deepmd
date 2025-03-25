@@ -55,15 +55,15 @@ def parseConfContents(file):
     NxStr=""
     NyStr=""
     NzStr=""
-    box_xStr=""
-    box_yStr=""
-    box_zStr=""
-    obs_name = ""
-    effective_data_num_required = ""
-    sweep_to_write = ""
-    default_flush_num = ""
+    box_x_initStr=""
+    box_y_initStr=""
+    box_z_initStr=""
+    obs_nameStr = ""
+    effective_data_num_requiredStr = ""
+    sweep_to_writeStr = ""
+    default_flush_numStr = ""
     hStr = ""
-    swp_multiplyStr = ""
+    swp_multipliStr = ""
     for oneLine in linesWithCommentsRemoved:
         matchLine = re.match(r'(\w+)\s*=\s*(.+)', oneLine)
         if matchLine:
@@ -124,27 +124,27 @@ def parseConfContents(file):
                     print(fmtErrStr + oneLine)
                     exit(fmtCode)
             # match box_x
-            if key=="box_x":
-                match_box_x_pattern=re.match(r"box_x\s*=\s*([-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?)$", oneLine)
+            if key=="box_x_init":
+                match_box_x_pattern=re.match(r"box_x_init\s*=\s*([-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?)$", oneLine)
                 if match_box_x_pattern:
-                    box_xStr=match_box_x_pattern.group(1)
+                    box_x_initStr=match_box_x_pattern.group(1)
                 else:
                     print(fmtErrStr + oneLine)
                     exit(fmtCode)
             # match box_y
-            if key=="box_y":
-                match_box_y_pattern=re.match(r"box_y\s*=\s*([-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?)$", oneLine)
+            if key=="box_y_init":
+                match_box_y_pattern=re.match(r"box_y_init\s*=\s*([-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?)$", oneLine)
                 if match_box_y_pattern:
-                    box_yStr=match_box_y_pattern.group(1)
+                    box_y_initStr=match_box_y_pattern.group(1)
                 else:
                     print(fmtErrStr + oneLine)
                     exit(fmtCode)
 
             # match box_z
-            if key=="box_z":
-                match_box_z_pattern=re.match(r"box_z\s*=\s*([-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?)$", oneLine)
+            if key=="box_z_init":
+                match_box_z_pattern=re.match(r"box_z_init\s*=\s*([-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?)$", oneLine)
                 if match_box_z_pattern:
-                    box_zStr=match_box_z_pattern.group(1)
+                    box_z_initStr=match_box_z_pattern.group(1)
                 else:
                     print(fmtErrStr + oneLine)
                     exit(fmtCode)
@@ -157,28 +157,28 @@ def parseConfContents(file):
                     print(fmtErrStr + oneLine)
                     exit(fmtCode)
 
-                obs_name = value
+                obs_nameStr = value
 
             # match sweep_to_write
             if key == "sweep_to_write":
                 if re.search(r"[^\d]", value):
                     print(fmtErrStr + oneLine)
                     exit(fmtCode)
-                sweep_to_write = value
+                sweep_to_writeStr = value
 
             # match default_flush_num
             if key == "default_flush_num":
                 if re.search(r"[^\d]", value):
                     print(fmtErrStr + oneLine)
                     exit(fmtCode)
-                default_flush_num = value
+                default_flush_numStr = value
 
             # match effective_data_num_required
             if key == "effective_data_num_required":
                 if re.search(r"[^\d]", value):
                     print(fmtErrStr + oneLine)
                     exit(fmtCode)
-                effective_data_num_required = value
+                effective_data_num_requiredStr = value
 
             # match h
             if key == "h":
@@ -221,32 +221,32 @@ def parseConfContents(file):
     if NzStr=="":
         print("Nz not found in " + str(file))
         exit(valueMissingCode)
-    if box_xStr=="":
+    if box_x_initStr=="":
         print("box_x not found in "+str(file))
         exit(valueMissingCode)
-    if box_yStr=="":
+    if box_y_initStr=="":
         print("box_y not found in "+str(file))
         exit(valueMissingCode)
-    if box_zStr=="":
+    if box_z_initStr=="":
         print("box_z not found in "+str(file))
         exit(valueMissingCode)
 
 
-    if effective_data_num_required == "":
+    if effective_data_num_requiredStr == "":
         print("effective_data_num_required not found in " + str(file))
         exit(valueMissingCode)
 
-    if sweep_to_write == "":
+    if sweep_to_writeStr == "":
         print("sweep_to_write not found in " + str(file))
         exit(valueMissingCode)
 
-    if default_flush_num == "":
+    if default_flush_numStr == "":
         print("default_flush_num not found in " + str(file))
         exit(valueMissingCode)
     if hStr == "":
         print("h not found in " + str(file))
         exit(valueMissingCode)
-    if obs_name == "":
+    if obs_nameStr == "":
         print("observable_name not found in " + str(file))
         exit(valueMissingCode)
     if swp_multiplyStr == "":
@@ -259,13 +259,13 @@ def parseConfContents(file):
         "Nx":NxStr,
         "Ny":NyStr,
         "Nz":NzStr,
-        "box_x":box_xStr,
-        "box_y":box_yStr,
-        "box_z":box_zStr,
-        "observable_name": obs_name,
-        "effective_data_num_required": effective_data_num_required,
-        "sweep_to_write": sweep_to_write,
-        "default_flush_num": default_flush_num,
+        "box_x_init":box_x_initStr,
+        "box_y_init":box_y_initStr,
+        "box_z_init":box_z_initStr,
+        "observable_name": obs_nameStr,
+        "effective_data_num_required": effective_data_num_requiredStr,
+        "sweep_to_write": sweep_to_writeStr,
+        "default_flush_num": default_flush_numStr,
         "confFileName": file,
         "h": hStr,
         "sweep_multiple": swp_multiplyStr,

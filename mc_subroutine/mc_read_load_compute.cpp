@@ -268,7 +268,7 @@ void mc_computation::proposal_uni_coord(const std::vector<double>& coord_1_frame
 
 void mc_computation::proposal_uni_box(const std::vector<double>&box_1_frame_curr,
         std::vector<double>&box_1_frame_next,const int& ind,const std::vector<double>&coord_1_frame_curr,
-        double &box_x_max_val,double & box_y_max_val,double & box_z_max_val)
+        double &atom_x_max_val,double & atom_y_max_val,double & atom_z_max_val)
 {
     std::memcpy(box_1_frame_next.data(),box_1_frame_curr.data(),box_component_num*sizeof(double));
     ///////////////////////////////////////////////////////
@@ -282,9 +282,11 @@ void mc_computation::proposal_uni_box(const std::vector<double>&box_1_frame_curr
             coord_x_components[i/3]=coord_1_frame_curr[i];
         }//end for
         auto x_max_iter=std::max_element(coord_x_components.begin(),coord_x_components.end());
-        box_x_max_val=*x_max_iter;
-
-        double x_direction_new_val=this->generate_uni_open_interval(box_1_frame_curr[box_x_component_position],box_x_max_val,box_upper_bound,h);
+        atom_x_max_val=*x_max_iter;
+        //to prevent unwanted usage
+        atom_y_max_val=-1;
+        atom_z_max_val=-1;
+        double x_direction_new_val=this->generate_uni_open_interval(box_1_frame_curr[box_x_component_position],atom_x_max_val,box_upper_bound,h);
         box_1_frame_next[box_x_component_position]=x_direction_new_val;
         return;
     }//end if ind==box_x_component_position
@@ -301,8 +303,11 @@ void mc_computation::proposal_uni_box(const std::vector<double>&box_1_frame_curr
             coord_y_components[(i-1)/3]=coord_1_frame_curr[i];
         }//end for
         auto max_y_iter=std::max_element(coord_y_components.begin(),coord_y_components.end());
-        box_y_max_val=*max_y_iter;
-        double y_direction_new_val=this->generate_uni_open_interval(box_1_frame_curr[box_y_component_position],box_y_max_val,box_upper_bound,h);
+        atom_y_max_val=*max_y_iter;
+        //to prevent unwanted usage
+        atom_x_max_val=-1;
+        atom_z_max_val=-1;
+        double y_direction_new_val=this->generate_uni_open_interval(box_1_frame_curr[box_y_component_position],atom_y_max_val,box_upper_bound,h);
         box_1_frame_next[box_y_component_position]=y_direction_new_val;
         return;
     }//end if ind==box_y_component_position
@@ -319,9 +324,11 @@ void mc_computation::proposal_uni_box(const std::vector<double>&box_1_frame_curr
             coord_z_components[(i-2)/3]=coord_1_frame_curr[i];
         }//end for
         auto max_z_iter=std::max_element(coord_z_components.begin(),coord_z_components.end());
-        box_z_max_val=*max_z_iter;
-
-        double z_direction_new_val=this->generate_uni_open_interval(box_1_frame_curr[box_z_component_position],box_z_max_val,box_upper_bound,h);
+        atom_z_max_val=*max_z_iter;
+        //to prevent unwanted usage
+        atom_x_max_val=-1;
+        atom_y_max_val=-1;
+        double z_direction_new_val=this->generate_uni_open_interval(box_1_frame_curr[box_z_component_position],atom_z_max_val,box_upper_bound,h);
         box_1_frame_next[box_z_component_position]=z_direction_new_val;
         return;
     }//end if ind==box_z_component_position
@@ -341,11 +348,232 @@ void mc_computation::proposal_uni_box(const std::vector<double>&box_1_frame_curr
 /// @param UNext
 /// @return acceptance ratio for updating box
 double mc_computation::acceptanceRatio_uni_for_box(const std::vector<double>&box_1_frame_curr,
-                                     const std::vector<double>&box_1_frame_next,const int& ind,const double& UCurr, const double& UNext)
+                                         const std::vector<double>&box_1_frame_next,const int& ind,
+                                         const double& UCurr, const double& UNext,
+                                         const double &atom_x_max_val, const double &atom_y_max_val, const double &atom_z_max_val)
 {
 
+    double V_next=this->box_2_volume(box_1_frame_next);
+    double V_curr=this->box_2_volume(box_1_frame_curr);
+
+    double numerator = -this->beta * UNext-this->gamma*V_next;
+    double denominator = -this->beta * UCurr-this->gamma*V_curr ;
+    double R = std::exp(numerator - denominator);
+    double S_curr_next=0;
+    double S_next_curr=0;
+
+
+    if (ind==box_x_component_position)
+    {
+        S_curr_next=S_uni(box_1_frame_curr[ind],
+            box_1_frame_next[ind],atom_x_max_val,box_upper_bound,h);
+
+        S_next_curr=S_uni(box_1_frame_next[ind],box_1_frame_curr[ind],
+           atom_x_max_val,box_upper_bound,h );
+    }//end if ind==box_x_component_position
+    else if (ind==box_y_component_position)
+    {
+        S_curr_next=S_uni(box_1_frame_curr[ind],box_1_frame_next[ind],
+            atom_y_max_val,box_upper_bound,h);
+
+        S_next_curr=S_uni(box_1_frame_next[ind],box_1_frame_curr[ind],
+            atom_y_max_val,box_upper_bound,h);
+    }//end else if ind==box_y_component_position
+
+    else if (ind==box_z_component_position)
+    {
+        S_curr_next=S_uni(box_1_frame_curr[ind],box_1_frame_next[ind],
+        atom_z_max_val,box_upper_bound,h
+            );
+        S_next_curr=S_uni(box_1_frame_next[ind],box_1_frame_curr[ind],
+            atom_z_max_val,box_upper_bound,h);
+    }//end else if ind==box_z_component_position
+    else
+    {
+        std::cerr<<"Invalid ind="<<ind<<std::endl;
+        std::exit(4);
+    }//end else
+    double ratio = S_curr_next / S_next_curr;
+    if (std::fetestexcept(FE_DIVBYZERO))
+    {
+        std::cout << "Division by zero exception caught." << std::endl;
+        std::exit(15);
+    }
+    if (std::isnan(ratio))
+    {
+        std::cout << "The result is NaN." << std::endl;
+        std::exit(15);
+    }
+    R *= ratio;
+
+    return std::min(1.0, R);
+}
+
+
+
+double mc_computation::acceptanceRatio_uni_for_coord(const std::vector<double>& coord_1_frame_curr,
+        const std::vector<double>&coord_1_frame_next,const int& ind,const double& UCurr, const double& UNext,
+       const double& box_x_val, const double& box_y_val,const double& box_z_val )
+{
+
+    double numerator = -this->beta * UNext;
+    double denominator = -this->beta * UCurr;
+    double R = std::exp(numerator - denominator);
+    double S_curr_next=0;
+    double S_next_curr=0;
+
+
+    if (ind%3==0)
+    {
+        S_curr_next=S_uni(coord_1_frame_curr[ind],coord_1_frame_next[ind],
+            0,box_x_val,h);
+        S_next_curr=S_uni(coord_1_frame_next[ind],coord_1_frame_curr[ind],
+            0,box_x_val,h);
+    }//end mod 3 ==0
+    else if (ind%3==1)
+    {
+        S_curr_next=S_uni(coord_1_frame_curr[ind],coord_1_frame_next[ind],
+            0,box_y_val,h);
+        S_next_curr=S_uni(coord_1_frame_next[ind],coord_1_frame_curr[ind],
+            0,box_y_val,h);
+    }//end mod 3==1
+    else if (ind %3==2)
+    {
+        S_curr_next=S_uni(coord_1_frame_curr[ind],coord_1_frame_next[ind],
+            0,box_z_val,h);
+        S_next_curr=S_uni(coord_1_frame_next[ind],coord_1_frame_curr[ind],
+        0,box_z_val,h);
+
+    }//end mod 3 ==2
+    else
+    {
+        std::cerr<<"invalid ind="<<ind<<std::endl;
+        std::exit(15);
+    }
+
+    double ratio = S_curr_next / S_next_curr;
+    if (std::fetestexcept(FE_DIVBYZERO))
+    {
+        std::cout << "Division by zero exception caught." << std::endl;
+        std::exit(15);
+    }
+    if (std::isnan(ratio))
+    {
+        std::cout << "The result is NaN." << std::endl;
+        std::exit(15);
+    }
+    R *= ratio;
+
+    return std::min(1.0, R);
+}
+
+
+void mc_computation::energy_update_box_one_component(const std::vector<double>&box_1_frame_curr,
+       const std::vector<double>&box_1_frame_next,const std::vector<double>&coord_1_frame_curr,double& UCurr, double& UNext)
+{
+    //energy curr
+    this->dp_model.compute(UCurr,force_1_frame_curr,virial_1_frame_curr,coord_1_frame_curr,atom_type,box_1_frame_curr);
+
+    //energy next
+    this->dp_model.compute(UNext,force_1_frame_next,virial_1_frame_next,coord_1_frame_curr,atom_type,box_1_frame_next);
+}
+
+
+double mc_computation::box_2_volume(const std::vector<double>& box_1_frame)
+{
+    if (box_1_frame.size() !=box_component_num)
+    {
+        std::cerr<<"Incorrect box length: box_1_frame.size()="<<box_1_frame.size()<<std::endl;
+        std::exit(16);
+    }//end length check
+    double box_x=box_1_frame[box_x_component_position];
+    double box_y=box_1_frame[box_y_component_position];
+    double box_z=box_1_frame[box_z_component_position];
+
+    double volume=box_x*box_y*box_z;
+    if (volume<=0)
+    {
+        std::cerr<<"invalid volume: volume="<<volume<<std::endl;
+        std::exit(12);
+    }//end if
+    return volume;
+}
+
+
+void mc_computation::energy_update_coord_one_component(const std::vector<double>& coord_1_frame_curr,
+        const std::vector<double>&coord_1_frame_next,  double& UCurr,   double& UNext,const std::vector<double>&box_1_frame_curr)
+{
+//energy curr
+    this->dp_model.compute(UCurr,force_1_frame_curr,virial_1_frame_curr,coord_1_frame_curr,atom_type,box_1_frame_curr);
+
+    //energy next
+    this->dp_model.compute(UNext,force_1_frame_next,virial_1_frame_next,coord_1_frame_next,atom_type,box_1_frame_curr);
 
 
 
 
+}
+
+
+
+
+void  mc_computation::execute_mc_one_sweep(std::vector<double>& coord_1_frame_curr,
+        std::vector<double>&box_1_frame_curr,
+        double& UCurr,
+       std::vector<double>&coord_1_frame_next,
+       std::vector<double>&box_1_frame_next)
+{
+    double UNext = 0;
+    double atom_x_max_val,atom_y_max_val,atom_z_max_val;
+    // update coord
+    for (int i=0;i<total_atom_xyz_components_num;i++)
+    {
+        int ind_coord=unif_in_0_NxNyNz_3_3_m1(e2);
+        // std::cout<<"ind_coord="<<ind_coord<<std::endl;
+        this->proposal_uni_coord(coord_1_frame_curr,coord_1_frame_next,ind_coord,box_1_frame_curr);
+        this->energy_update_coord_one_component(coord_1_frame_curr,coord_1_frame_next,UCurr,UNext,box_1_frame_curr);
+
+        double r_coord=this->acceptanceRatio_uni_for_coord(coord_1_frame_curr,coord_1_frame_next,
+            ind_coord,UCurr,UNext,box_1_frame_curr[box_x_component_position],
+            box_1_frame_curr[box_y_component_position],
+            box_1_frame_curr[box_z_component_position]);
+        double u = distUnif01(e2);
+        if (u <= r_coord)
+        {
+            UCurr = UNext;
+            std::memcpy(coord_1_frame_curr.data(),
+                coord_1_frame_next.data(),total_atom_xyz_components_num*sizeof(double));
+
+        }//end of accept-reject
+
+    }//end updating coord
+    //updating box
+    for (int i=0;i<3;i++)
+    {
+        int which_ind_box=unif_in_0_2(e2);
+
+        int ind_box=non_0_inds_in_box[which_ind_box];
+        this->proposal_uni_box(box_1_frame_curr,box_1_frame_next,
+            ind_box,
+            coord_1_frame_curr,atom_x_max_val,
+            atom_y_max_val,atom_z_max_val);
+
+        this->energy_update_box_one_component(box_1_frame_curr,
+            box_1_frame_next,coord_1_frame_curr,UCurr,UNext);
+
+        double r_box=this->acceptanceRatio_uni_for_box(
+            box_1_frame_curr,box_1_frame_next,ind_box,
+            UCurr,UNext,
+            atom_x_max_val,atom_y_max_val,atom_z_max_val);
+        double u = distUnif01(e2);
+        if (u<=r_box)
+        {
+            UCurr = UNext;
+            std::memcpy(box_1_frame_curr.data(),
+                box_1_frame_next.data(),box_component_num*sizeof
+                (double));
+        }//end of accept-reject
+
+
+    }//end updating box
 }

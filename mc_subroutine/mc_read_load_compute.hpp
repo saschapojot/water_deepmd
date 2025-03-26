@@ -221,6 +221,7 @@ class mc_computation
         this->box_x_component_position=0;
         this->box_y_component_position=3;
         this->box_z_component_position=6;
+        non_0_inds_in_box={box_x_component_position,box_y_component_position,box_z_component_position};
         //allocate memory for data
 
         try
@@ -248,17 +249,17 @@ class mc_computation
             this->coord_z_components.resize(total_atom_num);
 
 
-            // this->coord_1_frame_curr.resize(Nx*Ny*Nz*3*3);
-            // this->coord_1_frame_next.resize(Nx*Ny*Nz*3*3);
+            this->coord_1_frame_curr.resize(total_atom_xyz_components_num);
+            this->coord_1_frame_next.resize(total_atom_xyz_components_num);
 
-            // this->box_1_frame_curr.resize(9);
-            // this->box_1_frame_next.resize(9);
+            this->box_1_frame_curr.resize(box_component_num);
+            this->box_1_frame_next.resize(box_component_num);
 
-            // this->force_1_frame_curr.resize(Nx*Ny*Nz*3*3);
-            // this->force_1_frame_next.resize(Nx*Ny*Nz*3*3);
+            this->force_1_frame_curr.resize(total_atom_xyz_components_num);
+            this->force_1_frame_next.resize(total_atom_xyz_components_num);
 
-            // this->virial_1_frame_curr.resize(Nx*Ny*Nz*3*3);
-            // this->virial_1_frame_next.resize(Nx*Ny*Nz*3*3);
+            this->virial_1_frame_curr.resize(total_atom_xyz_components_num);
+            this->virial_1_frame_next.resize(total_atom_xyz_components_num);
 
 
             this->atom_type.resize(total_atom_num);
@@ -293,7 +294,10 @@ class mc_computation
         }//end for
         // print_vec(atom_type,Nx*Ny*Nz*3);
 
-        this->unif_in_0_NxNyNz_3_3=std::uniform_int_distribution<int>(0,total_atom_xyz_components_num);
+        this->unif_in_0_NxNyNz_3_3_m1=std::uniform_int_distribution<int>(0,total_atom_xyz_components_num-1);
+
+        this->unif_in_0_2=std::uniform_int_distribution<int>(0,2);
+
         this->box_upper_bound=15.0;
 
         std::cout<<"box_upper_bound="<<box_upper_bound<<std::endl;
@@ -309,6 +313,24 @@ public:
 
     void init_coord_and_box();
 
+
+    void execute_mc_one_sweep(std::vector<double>& coord_1_frame_curr,
+        std::vector<double>&box_1_frame_curr,
+        double& UCurr,
+       std::vector<double>&coord_1_frame_next,
+       std::vector<double>&box_1_frame_next);
+
+
+    void energy_update_coord_one_component(const std::vector<double>& coord_1_frame_curr,
+        const std::vector<double>&coord_1_frame_next,  double& UCurr,   double& UNext,const std::vector<double>&box_1_frame_curr);
+
+
+    void energy_update_box_one_component(const std::vector<double>&box_1_frame_curr,
+        const std::vector<double>&box_1_frame_next,const std::vector<double>&coord_1_frame_curr,double& UCurr, double& UNext);
+
+    double acceptanceRatio_uni_for_coord(const std::vector<double>& coord_1_frame_curr,
+        const std::vector<double>&coord_1_frame_next,const int& ind,const double& UCurr, const double& UNext,
+       const double& box_x_val, const double& box_y_val,const double& box_z_val );
     ///
     /// @param box_1_frame_curr
     /// @param box_1_frame_next
@@ -318,16 +340,19 @@ public:
     /// @return acceptance ratio for updating box
     double acceptanceRatio_uni_for_box(const std::vector<double>&box_1_frame_curr,
                                          const std::vector<double>&box_1_frame_next,const int& ind,
-                                         const double& UCurr, const double& UNext);
+                                         const double& UCurr, const double& UNext,
+                                         const double &atom_x_max_val, const double &atom_y_max_val, const double &atom_z_max_val);
 
 
     void proposal_uni_box(const std::vector<double>&box_1_frame_curr,
         std::vector<double>&box_1_frame_next,const int& ind,const std::vector<double>&coord_1_frame_curr,
-        double &box_x_max_val,double & box_y_max_val,double & box_z_max_val);
+        double &atom_x_max_val,double & atom_y_max_val,double & atom_z_max_val);
 
     void proposal_uni_coord(const std::vector<double>& coord_1_frame_curr,
         std::vector<double>&coord_1_frame_next,const int& ind,const std::vector<double>&box_1_frame_curr);
 
+
+    double box_2_volume(const std::vector<double>& box_1_frame);
     ///
     /// @param x proposed value
     /// @param y current value
@@ -403,7 +428,8 @@ public:
     std::string TDirRoot;
     std::string U_dist_dataDir;
     std::ranlux24_base e2;
-    std::uniform_int_distribution<int> unif_in_0_NxNyNz_3_3;
+    std::uniform_int_distribution<int> unif_in_0_NxNyNz_3_3_m1;
+    std::uniform_int_distribution<int> unif_in_0_2;
     std::uniform_real_distribution<> distUnif01;
     int sweep_multiple;
     std::string out_U_path;
@@ -429,15 +455,15 @@ public:
     std::vector<double>coord_init_vector;
     std::vector<double>box_init_vector;
 
-    // std::vector<double>coord_1_frame_curr;
-    // std::vector<double>coord_1_frame_next;
-    // std::vector<double> box_1_frame_curr;
-    // std::vector<double> box_1_frame_next;
+    std::vector<double>coord_1_frame_curr;
+    std::vector<double>coord_1_frame_next;
+    std::vector<double> box_1_frame_curr;
+    std::vector<double> box_1_frame_next;
 
     std::vector<int>atom_type;
 
-    // std::vector<double>force_1_frame_curr,virial_1_frame_curr;
-    // std::vector<double>force_1_frame_next,virial_1_frame_next;
+    std::vector<double>force_1_frame_curr,virial_1_frame_curr;
+    std::vector<double>force_1_frame_next,virial_1_frame_next;
 
 
     std::vector<double> coord_x_components,coord_y_components,coord_z_components;
@@ -451,5 +477,7 @@ public:
     int box_component_num;
 
     int box_x_component_position,box_y_component_position,box_z_component_position;
+
+    std::vector<int> non_0_inds_in_box;
 
 };

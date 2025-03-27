@@ -219,8 +219,8 @@ class mc_computation
         this->total_atom_xyz_components_num=Nx*Ny*Nz*3*3;
         this->box_component_num=9;
         this->box_x_component_position=0;
-        this->box_y_component_position=3;
-        this->box_z_component_position=6;
+        this->box_y_component_position=4;
+        this->box_z_component_position=8;
         non_0_inds_in_box={box_x_component_position,box_y_component_position,box_z_component_position};
         //allocate memory for data
 
@@ -313,6 +313,8 @@ public:
 
     void init_coord_and_box();
 
+    void execute_mc(const std::shared_ptr<double[]>&coord_init,
+        const std::shared_ptr<double[]>&box_init,const int& flushNum);
 
     void execute_mc_one_sweep(std::vector<double>& coord_1_frame_curr,
         std::vector<double>&box_1_frame_curr,

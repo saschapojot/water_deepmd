@@ -581,8 +581,11 @@ void mc_computation::execute_mc_one_sweep(std::vector<double>& coord_1_frame_cur
         int ind_coord = unif_in_0_NxNyNz_3_3_m1(e2);
         // std::cout<<"ind_coord="<<ind_coord<<std::endl;
         this->proposal_uni_coord(coord_1_frame_curr, coord_1_frame_next, ind_coord, box_1_frame_curr);
+        // const auto t_one_energy_Start{std::chrono::steady_clock::now()};
         this->energy_update_coord_one_component(coord_1_frame_curr, coord_1_frame_next, UCurr, UNext, box_1_frame_curr);
-
+        // const auto t_one_energy_End{std::chrono::steady_clock::now()};
+        // const std::chrono::duration<double> elapsed_secondsAll{t_one_energy_End - t_one_energy_Start};
+        // std::cout<<"energy evaluation  twice: "<< elapsed_secondsAll.count()<<" s"<<std::endl;
         double r_coord = this->acceptanceRatio_uni_for_coord(coord_1_frame_curr, coord_1_frame_next,
                                                              ind_coord, UCurr, UNext,
                                                              box_1_frame_curr[box_x_component_position],

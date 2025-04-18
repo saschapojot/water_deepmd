@@ -21,11 +21,11 @@
 namespace fs = boost::filesystem;
 namespace py = boost::python;
 namespace np = boost::python::numpy;
-
+static const int seed=29;
 class mc_computation
 {
     public:
-    mc_computation(const std::string& cppInParamsFileName): e2(std::random_device{}()), distUnif01(0.0, 1.0)
+    mc_computation(const std::string& cppInParamsFileName): e2(seed), distUnif01(0.0, 1.0)
     {
 
         std::ifstream file(cppInParamsFileName);
@@ -206,7 +206,18 @@ class mc_computation
                 paramCounter++;
                 continue;
 
-            }
+            }//end  Nz
+
+            // read box_upper_bound
+            if (paramCounter == 13)
+            {
+                iss>>box_upper_bound;
+                std::cout<<"box_upper_bound="<<box_upper_bound<<std::endl;
+
+                paramCounter++;
+                continue;
+            }//end box_upper_bound
+
 
 
 
@@ -298,9 +309,8 @@ class mc_computation
 
         this->unif_in_0_2=std::uniform_int_distribution<int>(0,2);
 
-        this->box_upper_bound=15.0;
-
-        std::cout<<"box_upper_bound="<<box_upper_bound<<std::endl;
+        // this->box_upper_bound=15.0;
+        //
 
 
         this->out_U_path=U_dist_dataDir+"/U/";

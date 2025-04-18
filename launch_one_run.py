@@ -62,8 +62,8 @@ loadResult=subprocess.run(["python3","./init_run_scripts/load_previous_data.py",
 
 if loadResult.returncode!=0:
     print("Error in loading with code "+str(loadResult.returncode))
-    # print(loadResult.stdout)
-    # print(loadResult.stderr)
+    print(loadResult.stdout)
+    print(loadResult.stderr)
     exit(loadErrCode)
 
 match_loadJson=re.match(r"loadedJsonData=(.+)$",loadResult.stdout)
@@ -97,10 +97,11 @@ NxStr=jsonDataFromConf["Nx"]
 NyStr=jsonDataFromConf["Ny"]
 
 NzStr=jsonDataFromConf["Nz"]
+box_x_init=jsonDataFromConf["box_x_init"]
 
-
-
-
+box_y_init=jsonDataFromConf["box_y_init"]
+box_z_init=jsonDataFromConf["box_z_init"]
+box_upper_bound=jsonDataFromConf["box_upper_bound"]
 params2cppInFile=[
     TStr+"\n",
     PStr+"\n",
@@ -114,7 +115,11 @@ params2cppInFile=[
     sweep_multipleStr+"\n",
     NxStr+"\n",
     NyStr+"\n",
-    NzStr+"\n"
+    NzStr+"\n",
+    # box_x_init+"\n",
+    # box_y_init+"\n",
+    # box_z_init+"\n",
+    box_upper_bound+"\n"
     ]
 
 cppInParamsFileName=TDirRoot+"/cppIn.txt"

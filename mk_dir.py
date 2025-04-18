@@ -1,6 +1,5 @@
 from pathlib import Path
 from decimal import Decimal, getcontext
-from math import factorial
 #This script creates directories and conf files for mc
 
 
@@ -17,7 +16,7 @@ def format_using_decimal(value, precision=15):
 Nx=4
 Ny=4
 Nz=4
-default_flush_num=30
+default_flush_num=1
 #T vals, unit is K
 #P vals, unit is GPa
 
@@ -42,15 +41,17 @@ for k in range(0,len(PVals)):
     PStrAll.append(PStr)
 
 model_file="./se_e2_a/compressed_model_water.pth"
-effective_data_num_required=5000
-sweep_to_write=500
-sweep_multiple=700
+effective_data_num_required=200
+sweep_to_write=5
+sweep_multiple=7
 observable_name="U_dist"
 dataRoot="./mcDataAll/"
+# Path(dataRoot).mkdir(exist_ok=True,parents=True)
 dataOutDir=dataRoot
 box_x_init=12.5
 box_y_init=12.5
 box_z_init=12.5
+box_upper_bound=14
 h=box_x_init/(Nx+1)/5
 def contents_to_conf(j,k):
     """
@@ -100,6 +101,7 @@ def contents_to_conf(j,k):
         f"sweep_multiple={sweep_multiple}\n",
         "\n",
         f"effective_data_num_required={effective_data_num_required}\n",
+        f"box_upper_bound={box_upper_bound}\n"
         ]
     outDir=dataOutDir+f"/Nx{Nx}_Ny{Ny}_Nz{Nz}/T{TStrAll[j]}/P{PStrAll[k]}/"
     Path(outDir).mkdir(exist_ok=True,parents=True)

@@ -219,6 +219,7 @@ double mc_computation::S_uni(const double& x, const double& y, const double& a, 
     {
         std::cerr<<"a="<<a<<", y="<<y<<", b="<<b<<std::endl;
         std::cerr << "value out of range." << std::endl;
+
         std::exit(10);
     }
 }
@@ -227,7 +228,8 @@ double mc_computation::S_uni(const double& x, const double& y, const double& a, 
 void mc_computation::init_and_run()
 {
     this->init_coord_and_box();
-    // print_shared_ptr(this->coord_init,Nx*Ny*Nz*3*3);
+    // print_shared_ptr(this->coord_init,total_atom_xyz_components_num);
+    // std::cout<<"coord_init[77]="<<coord_init[77]<<std::endl;
     // print_vec(this->coord_init_vector,Nx*Ny*Nz*3*3);
     // print_vec(this->box_init_vector,9);
     this->execute_mc(coord_init, box_init, newFlushNum);
@@ -251,6 +253,7 @@ void mc_computation::execute_mc(const std::shared_ptr<double[]>& coord_init,
         {
             this->execute_mc_one_sweep(coord_1_frame_curr, box_1_frame_curr,
                                        UCurr, coord_1_frame_next, box_1_frame_next);
+            // std::cout<<"swp="<<swp<<std::endl;
             if (swp % sweep_multiple == 0)
             {
                 int swp_out = swp / sweep_multiple;
@@ -259,6 +262,7 @@ void mc_computation::execute_mc(const std::shared_ptr<double[]>& coord_init,
                             coord_1_frame_curr.data(), total_atom_xyz_components_num * sizeof(double));
                 std::memcpy(box_data_all_ptr.get() + swp_out * box_component_num, box_1_frame_curr.data(),
                             box_component_num * sizeof(double));
+                std::cout<<"finish writing for swp="<<swp<<std::endl;
             } //end save to array
         } //end sweep for
         int flushEnd = flushThisFileStart + fls;
@@ -304,10 +308,12 @@ void mc_computation::proposal_uni_coord(const std::vector<double>& coord_1_frame
     {
         double y_tmp = this->generate_uni_open_interval(coord_1_frame_curr[ind], 0, box_y, h);
         coord_1_frame_next[ind] = y_tmp;
+
     } //end mod 3 ==1
     else
     {
         double z_tmp = this->generate_uni_open_interval(coord_1_frame_curr[ind], 0, box_z, h);
+
         coord_1_frame_next[ind] = z_tmp;
     } //end mod 3==2
 }
@@ -482,6 +488,7 @@ double mc_computation::acceptanceRatio_uni_for_coord(const std::vector<double>& 
     } //end mod 3 ==0
     else if (ind % 3 == 1)
     {
+
         S_curr_next = S_uni(coord_1_frame_curr[ind], coord_1_frame_next[ind],
                             0, box_y_val, h);
         S_next_curr = S_uni(coord_1_frame_next[ind], coord_1_frame_curr[ind],
@@ -579,7 +586,7 @@ void mc_computation::execute_mc_one_sweep(std::vector<double>& coord_1_frame_cur
     for (int i = 0; i < total_atom_xyz_components_num; i++)
     {
         int ind_coord = unif_in_0_NxNyNz_3_3_m1(e2);
-        // std::cout<<"ind_coord="<<ind_coord<<std::endl;
+        // std::cout<<"i="<<i<<", "<<"ind_coord="<<ind_coord<<std::endl;
         this->proposal_uni_coord(coord_1_frame_curr, coord_1_frame_next, ind_coord, box_1_frame_curr);
         // const auto t_one_energy_Start{std::chrono::steady_clock::now()};
         this->energy_update_coord_one_component(coord_1_frame_curr, coord_1_frame_next, UCurr, UNext, box_1_frame_curr);

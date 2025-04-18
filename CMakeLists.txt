@@ -1,9 +1,15 @@
 cmake_minimum_required(VERSION 3.28)
 project(water_deepmd)
+#set(CMAKE_C_COMPILER "/opt/intel/oneapi/compiler/2025.1/bin/icx")
 
+
+#set(CMAKE_CXX_COMPILER "/opt/intel/oneapi/compiler/2025.1/bin/icpx")
+#set(AVX2_FLAGS "-xCORE-AVX2 -qopt-zmm-usage=high")
+
+message(STATUS "Using C++ compiler: ${CMAKE_CXX_COMPILER}")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CXX_STANDARD_LIB "/usr/lib/x86_64-linux-gnu/libstdc++.so.6")
+#set(CXX_STANDARD_LIB "/usr/lib/x86_64-linux-gnu/libstdc++.so.6")
 add_executable(run_mc run_mc.cpp mc_subroutine/mc_read_load_compute.cpp mc_subroutine/mc_read_load_compute.hpp)
 target_compile_options(run_mc PRIVATE
         $<$<CONFIG:Release>:-O3>
@@ -29,15 +35,19 @@ set(Python3_LIBRARIES "/home/adada/anaconda3/envs/deepmd_venv/lib/libpython3.10.
 include_directories(${Python3_INCLUDE_DIRS})
 #include_directories("/home/adada/cppLocal/armadillo/include")
 include_directories("/home/adada/cppLocal/libtorch_cpu/include")
-include_directories("/home/adada/cppLocal/deep_potential_cpp/include")
+include_directories("/home/adada/cppLocal/deep_potential_cpp_gcc/include")
+
+#include_directories("/home/adada/cppLocal/deep_potential_cpp_intel/include")
 
 set(LIBTORCH_DIR "/home/adada/cppLocal/libtorch_cpu/lib/libtorch.so")
-set(dpcppDir "/home/adada/cppLocal/deep_potential_cpp/lib/libdeepmd_cc.so")
+set(dpcppDir "/home/adada/cppLocal/deep_potential_cpp_gcc/lib/libdeepmd_cc.so")
+
+#set(dpcppDir "/home/adada/cppLocal/deep_potential_cpp_intel/lib/libdeepmd_cc.so")
 set(Boost_NO_SYSTEM_PATHS YES)
 if (Boost_NO_SYSTEM_PATHS)
-    set(Boost_ROOT "~/cppLocal/boostBuild")
-    set(Boost_INCLUDE_DIR "~/cppLocal/boostBuild/include")
-    set(Boost_LIBRARY_DIR "~/cppLocal/boostBuild/lib")
+    set(Boost_ROOT "/home/adada/cppLocal/boostBuild")
+    set(Boost_INCLUDE_DIR "/home/adada/cppLocal/boostBuild/include")
+    set(Boost_LIBRARY_DIR "/home/adada/cppLocal/boostBuild/lib")
 endif (Boost_NO_SYSTEM_PATHS)
 
 find_package(Boost  REQUIRED COMPONENTS python numpy filesystem)
@@ -64,8 +74,9 @@ target_link_libraries(run_mc ${Python3_LIBRARIES})
 #file(GLOB LIBS_SO "/home/adada/cppLocal/armadillo/lib/libarmadillo.so")
 #target_link_libraries(run_mc ${LIBS_SO})
 
+target_link_directories(run_mc PRIVATE  "/home/adada/cppLocal/deep_potential_cpp_gcc/lib")
 
-target_link_directories(run_mc PRIVATE  "/home/adada/cppLocal/deep_potential_cpp/lib")
+#target_link_directories(run_mc PRIVATE  "/home/adada/cppLocal/deep_potential_cpp_intel/lib")
 target_link_libraries(run_mc ${LIBTORCH_DIR})
 target_link_libraries(run_mc ${dpcppDir})
 

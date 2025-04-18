@@ -63,7 +63,8 @@ def parseConfContents(file):
     sweep_to_writeStr = ""
     default_flush_numStr = ""
     hStr = ""
-    swp_multipliStr = ""
+    swp_multiplyStr = ""
+    box_upper_boundStr=""
     for oneLine in linesWithCommentsRemoved:
         matchLine = re.match(r'(\w+)\s*=\s*(.+)', oneLine)
         if matchLine:
@@ -197,6 +198,15 @@ def parseConfContents(file):
                 else:
                     print(fmtErrStr + oneLine)
                     exit(fmtCode)
+            # box_upper_bound
+            if key=="box_upper_bound":
+                match_box_upper_bound=re.match(r"([-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?)",value)
+                if match_box_upper_bound:
+                    box_upper_boundStr=match_box_upper_bound.group(1)
+                else:
+                    print(fmtErrStr + oneLine)
+                    exit(fmtCode)
+
         else:
             print("line: " + oneLine + " is discarded.")
             continue
@@ -251,6 +261,9 @@ def parseConfContents(file):
         exit(valueMissingCode)
     if swp_multiplyStr == "":
         swp_multiplyStr = "1"
+    if box_upper_boundStr=="":
+        print("box_upper_bound not found in " + str(file))
+        exit(valueMissingCode)
 
     dictTmp = {
         "T": TStr,
@@ -269,6 +282,7 @@ def parseConfContents(file):
         "confFileName": file,
         "h": hStr,
         "sweep_multiple": swp_multiplyStr,
+        "box_upper_bound":box_upper_boundStr
 
     }
     return dictTmp
